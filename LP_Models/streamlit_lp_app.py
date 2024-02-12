@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 import json
 
 # Load the trained model
-model_path = 'C:\\Users\\parkway\\Documents\\Python Code\\LP_Models\\LP_Models\\models\\dp_model.h5'
+model_path = 'C:\\Users\\parkway\\Documents\\Python Code\\ML_Models\\LP_Models\\models\\dp_model.h5'
 model = tf.keras.models.load_model(model_path)
 
 def preprocess_data(data):
@@ -83,15 +83,17 @@ def main():
             # predictions = model.predict(preprocessed_data.values)
             input_array = preprocessed_data.values.reshape(1, -1)  # Reshape the input array
             predictions = model.predict(input_array)
+            predictions_percentage = predictions * 100
 
             # Adjust the prediction output format and round the prediction to 0 or 1
             rounded_prediction = int(np.round(predictions[0]))
+            rounded_percentage = np.round(float(predictions_percentage), decimals=2)
 
             # Determine the result based on the rounded prediction
             if rounded_prediction == 0:
-                result = {'prediction': float(predictions), 'rounded prediction': 0, 'status': 'Default'}
+                result = {'prediction': float(predictions), 'prediction (%)': rounded_percentage, 'rounded prediction': 0, 'status': 'Default'}
             else:
-                result = {'prediction': float(predictions), 'rounded prediction': 1, 'status': 'Not Default'}
+                result = {'prediction': float(predictions), 'prediction (%)': rounded_percentage, 'rounded prediction': 1, 'status': 'Not Default'}
 
             # Display prediction result
             st.subheader('Prediction Result:')

@@ -1,21 +1,26 @@
-from flask import Flask, request, jsonify
-from flask_restful import Resource, Api
+from fastapi import FastAPI, HTTPException, Depends
+import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime as dt
 import numpy as np
 import pandas as pd
 import pickle
 import tensorflow as tf
 from sklearn.preprocessing import LabelEncoder
-from flask_cors import CORS  # Add this import for CORS support
 
-app = Flask(__name__)
-api = Api(app)
-CORS(app)  # Enable CORS
+app = FastAPI()
+
+# Enable CORS
+origins = ["*"]  # Adjust this to your specific needs
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load the trained model
-# Assume you have a trained model stored in a variable named 'model'
-# model_path = 'C:\\Users\\parkway\\Documents\\Python Code\\LP_Models\\models\\dp_model.pkl'
-# model = pickle.load(open(model_path, 'rb'))  # Load your model here
 model_path = 'C:\\Users\\parkway\\Documents\\Python Code\\ML_Models\\LP_Models\\models\\dp_model.h5'
 model = tf.keras.models.load_model(model_path)
 
@@ -25,11 +30,7 @@ def preprocess_data(data):
                        'current_employer', 'work_email_validated', 'first_account', 'last_account', 'created_on',
                        'process_time', 'photo_url', 'logins']
 
-    print("Columns in DataFrame:", data.columns)
     new_data = data.drop(columns=columns_to_drop)
-    # new_data = new_data.dropna()
-    # new_data = new_data[new_data['status_id'] != 1]
-
     new_data["requested_amount"] = new_data["requested_amount"].astype(int)
 
     columns_to_encode = ['gender', 'marital_status', 'type_of_residence', 'educational_attainment',
@@ -60,14 +61,13 @@ def preprocess_data(data):
     return new_data
 
 # Define a resource for your loan prediction
-class LoanPrediction(Resource):
-    def post(self):
-        # Get data from the request
-        data = request.get_json()
+class LoanPrediction:
+    def __init__(self, data: dict):
+        self.data = pd.DataFrame(data)
 
+    def predict_loan(self):
         # Preprocess the input data
-        input_data = pd.DataFrame(data)
-        preprocessed_data = preprocess_data(input_data)
+        preprocessed_data = preprocess_data(self.data)
 
         # Print preprocessed data for inspection
         print("Preprocessed Data Columns:", preprocessed_data.columns)
@@ -92,10 +92,13 @@ class LoanPrediction(Resource):
         else:
             result = {'Date': timestamp, 'prediction': float(predictions), 'prediction (%)': rounded_percentage, 'rounded prediction': 1, 'status': 'Not Default'}
 
-        return jsonify(result)
+        return result
 
-# Add the resource to the API with the specified endpoint
-api.add_resource(LoanPrediction, '/predict')
+@app.post("/predict")
+async def predict_loan(data: dict):
+    loan_predictor = LoanPrediction(data)
+    result = loan_predictor.predict_loan()
+    return result
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    uvicorn.run(app, host='127.0.0.1', port=8000)
